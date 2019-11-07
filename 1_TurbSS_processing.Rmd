@@ -1,0 +1,75 @@
+---
+title: "TurbSS Processing"
+author: "John Kemper"
+date: "10/17/2019"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+library(googledrive)
+library(tidyverse)
+library(ggplot2)
+library(lubridate)
+library(xts)
+library(ggthemes)
+library(readxl)
+library(tools)
+library(fs)
+```
+
+
+##Data download from Google Drive
+```{r}
+
+##Set working directory
+setwd("C:/Users/John/Documents/DR Sediment/DRSediment/")
+
+
+###Specify the drive using the drive URL
+turb_drive <- drive_get("https://drive.google.com/drive/u/1/folders/13K-gaXcBkCkLl1TTBw2tVQCjwsAUvSIW/")
+
+###List files on drive
+files <- drive_ls(turb_drive)
+
+###Extract only the data files
+excelFiles <- files %>%
+  filter(str_detect(name, ".xlsx")) 
+
+###Function to download the files from Drive and put them in a data folder
+turb_download <- function(x, y) {
+  drive_download(as_id(x))
+  
+  file_move(y, "C:/Users/John/Documents/DR Sediment/DRSediment/data/")
+  
+  
+}
+
+###Download and store the files
+map2(excelFiles$id, excelFiles$name, turb_download)
+
+
+turb_files <- list.files("data")
+
+turb_file_names <- str_extract(turb_files, "DR.")
+
+
+for(i in 1:length(turb_files)) {
+  
+  a <- read_xlsx(paste0("./data/",turb_files[i]))
+  
+  
+  
+  
+  
+}
+
+
+
+
+```
+
