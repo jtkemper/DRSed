@@ -20,14 +20,14 @@ library(ggthemes)
 library(readxl)
 library(tools)
 library(fs)
+library(stringr)
+library(purrr)
+
 ```
 
 
 ##Data download from Google Drive
 ```{r}
-
-##Set working directory
-setwd("C:/Users/John/Documents/DR Sediment/DRSediment/")
 
 
 ###Specify the drive using the drive URL
@@ -57,19 +57,38 @@ turb_files <- list.files("data")
 
 turb_file_names <- str_extract(turb_files, "DR.")
 
+path <- readxl_example("datasets.xls")
+path
+excel_sheets(path)
+
+map(excel_sheets(path), read_excel, path = path)
+
+sheets <- excel_sheets(paste0("./data/", turb_files[3])) %>%
+  str_extract("201.$") 
+
+
+
+y <- map(sheets, read_xlsx, path = (paste0("./data/", turb_files[3])))
+
+
+```
+
+##File manipulation
+```{r}
+
+DR_list <- list()
 
 for(i in 1:length(turb_files)) {
   
-  a <- read_xlsx(paste0("./data/",turb_files[i]))
+  tmp <- read_xlsx(paste0("./data/",turb_files[i])) %>%
+    map(excel_sheets(), read_xlsx)
   
   
   
+  DR_list[[i]] <- tmp
   
   
 }
-
-
-
-
+View(DR_list)
 ```
 
