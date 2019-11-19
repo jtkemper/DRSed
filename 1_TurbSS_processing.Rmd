@@ -28,8 +28,6 @@ library(purrr)
 
 ##Data download from Google Drive
 ```{r}
-
-
 ###Specify the drive using the drive URL
 turb_drive <- drive_get("https://drive.google.com/drive/u/1/folders/13K-gaXcBkCkLl1TTBw2tVQCjwsAUvSIW/")
 
@@ -57,24 +55,24 @@ turb_files <- list.files("data")
 
 turb_file_names <- str_extract(turb_files, "DR.")
 
-path <- readxl_example("datasets.xls")
-path
-excel_sheets(path)
+
 
 map(excel_sheets(path), read_excel, path = path)
 
 sheets <- excel_sheets(paste0("./data/", turb_files[3])) %>%
-  str_extract("201.$") 
-
+  str_extract("201.$") %>%
+  .[!is.na(.)]
 
 
 y <- map(sheets, read_xlsx, path = (paste0("./data/", turb_files[3])))
 
-
+z <- map(paste0("./data/", turb_files[3], sheets), read_xlsx)
 ```
 
-##File manipulation
+
 ```{r}
+##File manipulation
+
 
 DR_list <- list()
 
