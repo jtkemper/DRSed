@@ -23,6 +23,7 @@ library(fs)
 library(stringr)
 library(purrr)
 library(raster)
+library(dygraphs)
 
 ```
 
@@ -73,11 +74,11 @@ turb_files <- list.files("data")
 turb_file_names <- turb_files %>% str_split(., "\\.") %>%
   unlist() %>%
   str_subset(., "DR")
- 
+
 ###Extract all sheets
-sheets <- excel_sheets(paste0("./data/", turb_files[2])) %>%
-  str_extract("201.$") %>%
-  .[!is.na(.)]
+#sheets <- excel_sheets(paste0("./data/", turb_files[2])) %>%
+  #str_extract("201.$") %>%
+  #.[!is.na(.)]
 
 
 ```
@@ -118,15 +119,42 @@ for(i in 1:length(turb_files)) {
     bind_rows() %>%
     as_tibble() %>%
     dplyr::select(1:17)
+    
   
   write_csv(tmp, paste0("data/", turb_file_names[i], "_allyears.csv"))
-  
-  
- 
-  
   
 }
 
 
+```
+
+
+
+###Select storms
+```{r}
+setwd("C:/Users/John/Documents/DR Sediment/DRSediment/data")
+
+DR5 <- read_csv("DR5_allyears.csv") %>%  
+  rename_all(~str_replace_all(., " ", "_")) %>%
+  rename_all(~str_remove_all(., "[\\( \\)<>-]")) %>%
+  rename_all(~str_remove_all(., "__"))
+  
+  
+DR5_turb <- DR5 %>%
+  dplyr::select(1:7) %>%
+  filter(!is.na(datetime))
+
+x <- DR5_turb %>%
+  select_if(~any(is.na(.))) %>% 
+  summarise_each(~sum(is.na(.)))
+
+
+
+DR5_plot <- DR5_turb %>%
+  xts(., select(-datetime),
+      order.by = .$datetime) %>%
+  dygraph(.)
+
+DR5_plot
 ```
 
