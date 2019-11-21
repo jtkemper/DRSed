@@ -41,19 +41,33 @@ excelFiles <- files %>%
 
 ###Function to download the files from Drive and put them in a data folder
 turb_download <- function(x, y) {
-  drive_download(as_id(x))
+  drive_download(as_id(x), overwrite = TRUE)
   
-  file_move(y, "C:/Users/John/Documents/DR Sediment/DRSediment/data/")
+  file_move(y, "C:/Users/jkemper/Documents/UrbanSediment/DRSediment/data")
   
   
 }
+
 
 ###Download and store the files
 map2(excelFiles$id, excelFiles$name, turb_download)
 
 
+
+
+
+
+```
+
+
+###Get file parameters from file folders
+```{r}
+
 ###Get data file names
 turb_files <- list.files("data")
+
+
+#file.remove("data/~$DR4.xlsx")
 
 ###Get station names
 turb_file_names <- turb_files %>% str_split(., "\\.") %>%
@@ -61,17 +75,10 @@ turb_file_names <- turb_files %>% str_split(., "\\.") %>%
   str_subset(., "DR")
  
 ###Extract all sheets
-sheets <- excel_sheets(paste0("./data/", turb_files[3])) %>%
+sheets <- excel_sheets(paste0("./data/", turb_files[2])) %>%
   str_extract("201.$") %>%
   .[!is.na(.)]
 
-
-y <- map(sheets, read_xlsx, path = (paste0("./data/", turb_files[3])))
-
-
-
-
-map(excel_sheets(path), read_excel, path = path)
 
 ```
 
@@ -80,29 +87,46 @@ map(excel_sheets(path), read_excel, path = path)
 ##File manipulation
 
 
-DR_list <- list()
-
 for(i in 1:length(turb_files)) {
   
-  sheet_extractor <- function(lzt){
+  sheet_extractor <- function(strng){
     
-  sheets <- excel_sheets(paste0("./data/", lzt[i])) %>%
+  sheets <- excel_sheets(paste0("./data/", strng)) %>%
     str_extract("201.$") %>%
     .[!is.na(.)]
   
-  return(sheets)
+  print(sheets)
+  
 
   }
   
+  file_name_extractor <- function(srg) {
+    
+    turb_file_names <- srg %>% str_split(., "\\.") %>%
+      unlist() %>%
+      str_subset(., "DR")
+    
+  }
+  
+  print(turb_files[i])
+  
   sheets <- sheet_extractor(turb_files[i])
   
-  tmp <- map(sheets, read_xlsx, path = (paste0("./data/", turb_files[i])))
+  file_name_extractor(turb_files[i])
+  
+  tmp <- map(sheets, read_xlsx, path = (paste0("./data/", turb_files[i]))) %>%
+    bind_rows() %>%
+    as_tibble() %>%
+    dplyr::select(1:17)
+  
+  write_csv(tmp, paste0("data/", turb_file_names[i], "_allyears.csv"))
   
   
-  DR_list[[i]] <- tmp
+ 
   
   
 }
-View(DR_list)
+
+
 ```
 
