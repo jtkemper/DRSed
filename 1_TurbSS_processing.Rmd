@@ -140,21 +140,43 @@ DR5 <- read_csv("DR5_allyears.csv") %>%
   rename_all(~str_remove_all(., "__"))
   
   
-DR5_turb <- DR5 %>%
+DR5_turb_test <- DR5 %>%
   dplyr::select(1:7) %>%
-  filter(!is.na(datetime))
-
-x <- DR5_turb %>%
-  select_if(~any(is.na(.))) %>% 
-  summarise_each(~sum(is.na(.)))
+  filter(!is.na(datetime)) %>%
+  slice(1:10000) %>%
+  rename(Discharge_LperS = 3)
 
 
 
-DR5_plot <- DR5_turb %>%
+DR5_plot <- DR5_turb_test %>%
   xts(., select(-datetime),
       order.by = .$datetime) %>%
   dygraph(.)
 
-DR5_plot
+storm_selector <- function(df) {
+  
+  if(lead(df$Discharge_LperS)*10 > df$Discharge_LperS){
+    
+    start_Q <- (df$Discharge_LperS)
+    storm_start <- slice()
+    
+  } else{}
+}
+  
+      
+      
+        
+  
+  
+  
+        
+    
+for(i in 1:500) {
+  
+  storm_selector(DR5_turb_test)
+}
+
+DR5_turb_test$`Discharge_L/s`
+
 ```
 
