@@ -53,11 +53,6 @@ turb_download <- function(x, y) {
 ###Download and store the files
 map2(excelFiles$id, excelFiles$name, turb_download)
 
-
-
-
-
-
 ```
 
 
@@ -68,22 +63,14 @@ map2(excelFiles$id, excelFiles$name, turb_download)
 turb_files <- list.files("data")
 
 
-#file.remove("data/~$DR4.xlsx")
-
 ###Get station names
 turb_file_names <- turb_files %>% str_split(., "\\.") %>%
   unlist() %>%
   str_subset(., "DR")
 
-###Extract all sheets
-#sheets <- excel_sheets(paste0("./data/", turb_files[2])) %>%
-  #str_extract("201.$") %>%
-  #.[!is.na(.)]
-
-
 ```
 
-
+###Build station-by-station data file for full monitoring period
 ```{r}
 ##File manipulation
 
@@ -125,82 +112,175 @@ for(i in 1:length(turb_files)) {
   
 }
 
-
 ```
 
 
 
-###Select storms
+###Function to read in data for each station
 ```{r}
 setwd("C:/Users/jkemper/Documents/UrbanSediment/DRSediment")
 
-DR5 <- read_csv("data/DR5_allyears.csv") %>%  
-  rename_all(~str_replace_all(., " ", "_")) %>%
-  rename_all(~str_remove_all(., "[\\( \\)<>-]")) %>%
-  rename_all(~str_remove_all(., "__")) %>%
-  rename_all(~str_remove_all(., "[/*^=]")) %>%
-  rename(datetime = 1)
+###Fucntion to read in the data file and remove bad characters from column names
+file_reader <- function(strng) {
+  
+  station <- read_csv(strng) %>%  
+    rename_all(~str_replace_all(., " ", "_")) %>%
+    rename_all(~str_remove_all(., "[\\( \\)<>-]")) %>%
+    rename_all(~str_remove_all(., "__")) %>%
+    rename_all(~str_remove_all(., "[/*^=]")) %>%
+    rename(datetime = 1)
+  
+  return(station)
+  
+}
+```
 
-###Add columns that calculate the change in discharge over 5 timesteps 
+###Read-in the data
+```{r}
+###Read in the file for each station
+DR5 <- file_reader("data/DR5_allyears.csv")
+DR4 <- file_reader("data/DR4_allyears.csv")
+DR3 <- file_reader("data/DR3_allyears.csv")
+DR2 <- file_reader("data/DR2_allyears.csv")
+DRKR <- file_reader("data/DRKR_allyears.csv")
+
+```
+
+###Functions to prep data for storm selection
+```{r}
+###Add columns that calculate the change in discharge over a variety of timesteps 
 ###This is important for picking storms
-DR5_turb_test <- DR5 %>%
-  dplyr::select(1:12) %>%
-  filter(!is.na(datetime)) %>%
-  slice(1:10000) %>%
-  rename(Discharge_LperS = 3) %>%
-  filter(!is.na(Discharge_cfs)) %>%
-  mutate(delta_turb_lag = abs(Discharge_cfs - lag(Discharge_cfs))) %>%
-  mutate(delta_turb_lag = replace_na(delta_turb_lag, 0)) %>%
-  mutate(delta_turb_lag2 = abs(Discharge_cfs - lag(Discharge_cfs, n = 2))) %>%
-  mutate(delta_turb_lag2 = replace_na(delta_turb_lag2, 0)) %>%
-  mutate(delta_turb_lead = abs(Discharge_cfs - lead(Discharge_cfs))) %>%
-  mutate(delta_turb_lead = replace_na(delta_turb_lead, 0)) %>%
-  mutate(delta_turb_lead2 = abs(Discharge_cfs - lead(Discharge_cfs, n = 2))) %>%
-  mutate(delta_turb_lead2 = replace_na(delta_turb_lead2, 0))
+delta_calculator <- function(df) {
+  
+  df_turb <- df %>%
+    dplyr::select(1:10) %>%
+    filter(!is.na(datetime)) %>%
+    rename(Discharge_LperS = 3) %>%
+    filter(!is.na(Discharge_cfs)) %>%
+    mutate(delta_turb_lag = abs(Discharge_cfs - lag(Discharge_cfs))) %>%
+    mutate(delta_turb_lag = replace_na(delta_turb_lag, 0)) %>%
+    mutate(delta_turb_lag2 = abs(Discharge_cfs - lag(Discharge_cfs, n = 2))) %>%
+    mutate(delta_turb_lag2 = replace_na(delta_turb_lag2, 0)) %>%
+    mutate(delta_turb_lead = abs(Discharge_cfs - lead(Discharge_cfs))) %>%
+    mutate(delta_turb_lead = replace_na(delta_turb_lead, 0)) %>%
+    mutate(delta_turb_lead2 = abs(Discharge_cfs - lead(Discharge_cfs, n = 2))) %>%
+    mutate(delta_turb_lead2 = replace_na(delta_turb_lead2, 0)) %>%
+    mutate(delta_turb_lead3 = abs(Discharge_cfs - lead(Discharge_cfs, n = 3))) %>%
+    mutate(delta_turb_lead3 = replace_na(delta_turb_lead3, 0)) %>%
+    mutate(delta_turb_lead6 = abs(Discharge_cfs - lead(Discharge_cfs, n = 6))) %>%
+    mutate(delta_turb_lead6 = replace_na(delta_turb_lead6, 0)) %>%
+    mutate(delta_turb_lead12 = abs(Discharge_cfs - lead(Discharge_cfs, n = 12))) %>%
+    mutate(delta_turb_lead12 = replace_na(delta_turb_lead2, 0))
+  
+}
+```
 
+###Now, we prep and plot the raw data
+```{r}
+###Add delta discharge columns for each station
+DR5_turb <- delta_calculator(DR5)
+DR4_turb <- delta_calculator(DR4)
+DR3_turb <- delta_calculator(DR3)
+DR2_turb <- delta_calculator(DR2)
+DRKR_turb <- delta_calculator(DRKR)
 
-names(DR5_turb_test)
-
-
+###Interactive plot
 DR5_plot <- DR5_turb_test %>%
   xts(., select(-datetime),
       order.by = .$datetime) %>%
   dygraph(.)
 
-DR5_plot
 
-DR5_ts <- DR5_turb_test %>%
-  xts(., select(-datetime),
-      order.by = .$datetime) 
+```
 
-
-# storm_finder <- function(lst) {
-  
-  # x <- lst[[1]][2]
-  
-  # if(lst[[1]][i,2] > lst[[1]][(i+1),2])
-    
-    
-  
-
-# }
-  
+###Functions to identify and select storms
+```{r}
 ###Function that identifies storms based on the change in discharge over 5 timesteps
 ###If that change > 0.3, then it labels that row with a 1 (indicating a storm)
 ###If it is less than 0.3, then it lables that row with a 0 (indicating no storm)
-storm_picker <- function(df) {
+storm_detector <- function(df) {
   
   w <- df$delta_turb_lag
   x <- df$delta_turb_lead
   y <- df$delta_turb_lag2
   z <- df$delta_turb_lead2
   
-  ifelse((w > 0.3 | x > 0.3 | y > 0.3 | z > 0.3), 1, 0)
+  ifelse((w > 1 | x > 1 | y > 1 | z > 1), 1, 0)
   
 
 }
 
-View(DR5_turb_test)
+###Second pass function to fill in storm tails 
+###Checks to see if another "storm" occurs within 2 hrs of the end of the last storm
+###If so, it essentially knits the two together (because they're likely the same storm) by recoding it with a 1
+storm_detector_2 <- function(df) {
+  
+  a <- lag(df$code)
+  b <- lag(df$code, 2)
+  c<- lag(df$code, 4)
+  
+  d <- df$code
+  
+  j <- abs(df$datetime - lead(df$datetime))
+  
+  z <- lead(df$code)
+  zz <- lead(df$code, n =4)
+  zzz <- lead(df$code, n = 6)
+  
+  
+  
+  ifelse((j == 30 &  d == 0 & (a == 1 | b == 1 | c == 1) & (z == 1 | zz == 1 | zzz == 1)), 1, df$code)
+}
+
+
+###Third pass function to fill in storm tails tailored especially for 5 minute data
+###Checks if there is a > 0.1 change in discharge within an hour of the end of the current storm
+###This essentially ensures that storms with long flat tails are selected as one storm
+###and not accidentally seperated
+storm_detector_3 <- function(df) {
+  
+  a <- lag(df$code2, n = 12)
+  b <- lag(df$code2, n = 24)
+  c <- df$code2
+  
+  j <- abs(df$datetime - lead(df$datetime))
+  
+  w <- df$delta_turb_lag
+  x <- df$delta_turb_lead
+  y <- df$delta_turb_lag2
+  
+  z <- df$delta_turb_lead3
+  zz <- df$delta_turb_lead6
+  zzz <- df$delta_turb_lead12
+  
+  
+ 
+  ifelse((j == 5 & (a == 1 | b == 1) & c == 0 & (w > 0.1 | x > 0.1 | y > 0.1 | z > 0.1 | zz > 0.1 | zzz > 0.1)), 
+         1, df$code2)
+}
+
+###Fourth pass function to fully fill in the tails of storms in  5 minute data
+###Checks to see if another "storm" occurs within an hours of the end of the current storm
+###And knits the two together since, again, they're likely the same storm
+###This is important because the third pass would seperate a double peaked storm where each peak has a long-ish tail
+storm_detector_4 <- function(df) {
+  
+  a <- lag(df$code3, n = 3) 
+  b <- lag(df$code3, n = 6) 
+  c <- lag(df$code3, n = 12) 
+  d <- lag(df$code3, n =24)
+  e <- df$code3
+  
+  j <- abs(df$datetime - lead(df$datetime))
+  
+  z <- lead(df$code3, n = 3)
+  zz <- lead(df$code3, n = 6)
+  zzz <- lead(df$code3, n = 12)
+  
+  ifelse((j == 5 & (a == 1 | b == 1 | c == 1 | d == 1) & e == 0 & (z == 1 | zz == 1 | zzz == 1)),
+         1, df$code3)
+  
+}
 
 ###Detect the storms
 ###Code indicates whether there is a storm present
@@ -210,60 +290,181 @@ View(DR5_turb_test)
 ###and then uses cumsum to add 1 to the value every time that change occurs
 ###So what we get is a numerical storm label, i.e. each row in the first storm has 2 in the Group column
 ###the second storm a 4, and so on
-DR5_storms <- DR5_turb_test %>%
-  mutate(code = storm_picker(.)) %>%
-  mutate(Date = date(datetime)) %>%
-  mutate(isStorm = (as.logical(code))) %>%
-  mutate(Group = cumsum(c(1,diff(isStorm) != 0))) %>%
-  mutate(Storm = ifelse(((Group/2)%%1) != 0, 0, Group/2)) %>%
-  dplyr::select(-code) %>%
-  filter(isStorm == TRUE) 
+storm_selector <- function(df) {
+  
+  storms <- df %>%
+    mutate(code = storm_detector(.)) %>%
+    mutate(Date = date(datetime))
+  
+  storms <- storms %>%
+    mutate(code2 = storm_detector_2(.))
+    
+  storms <- storms %>%
+    mutate(code3 = storm_detector_3(.)) 
+  
+  storms <- storms %>%
+    mutate(code4 = storm_detector_4(.)) %>%
+    mutate(isStorm = (as.logical(code4))) %>%
+    mutate(Group = cumsum(c(1,diff(isStorm) != 0))) %>%
+    mutate(Storm = ifelse(((Group/2)%%1) != 0, 0, Group/2)) %>%
+    filter(isStorm == TRUE)
+  
+  
+  return(storms)
+}
+```
+
+###Now, identify and select the storms
+```{r}
+DR5_storms <- storm_selector(DR5_turb)
+DR4_storms <- storm_selector(DR4_turb)
+DR3_storms <- storm_selector(DR3_turb)
+DR2_storms <- storm_selector(DR2_turb)
+DRKR_storms <- storm_selector(DRKR_turb)
+```
+
+
+###Function to clean adn nest the storm data
+```{r}
+###Nest each storm within a list of storms and do a final filter for tiny, tiny storms that prolly aren't storms
+###Also filter storms where there are no turbidity data 
+storm_nester <- function(df) {
+  
+  susp_sed <- str_subset(names(df), "Suspended_sediment_load_kg")
+  
+  storms_nest <- df %>%
+    nest(-Storm) %>%
+    mutate(points = map(data, ~length(.x$datetime))) %>%
+    mutate(storm_length = map(data, ~(last(.x$datetime) - .x$datetime[1]))) %>%
+    filter(storm_length >= 2 & storm_length < 24) %>%
+    filter(points > 5) %>%
+    filter(!is.na(map(data, ~(sum(.x[,susp_sed])))))
+  
+  return(storms_nest)
+}
+```
+
+###Clean the storm data
+```{r}
+DR5_storms_nest <- storm_nester(DR5_storms)
+DR4_storms_nest <- storm_nester(DR4_storms)
+DR3_storms_nest <- storm_nester(DR3_storms)
+DR2_storms_nest <- storm_nester(DR2_storms)
+DRKR_storms_nest <- storm_nester(DRKR_storms)
 
 ```
 
+###Function to unnest in order to calculate storm summary stats
 ```{r}
-###Nest each storm within a list of storms
-DR5_storms_nest <- DR5_storms %>%
-  nest(-Storm)
+###Unnest for summary stats
+storm_unnester <- function(df) {
+  
+  storms_unnest <- df %>%
+    unnest(data)
+  
+  return(storms_unnest)
+  
+}
+```
 
+###Unnest data
+```{r}
+DR5_storms_unnest <- storm_unnester(DR5_storms_nest)
+DR4_storms_unnest <- storm_unnester(DR4_storms_nest)
+DR3_storms_unnest <- storm_unnester(DR3_storms_nest)
+DR2_storms_unnest <- storm_unnester(DR2_storms_nest)
+DRKR_storms_unnest <- storm_unnester(DRKR_storms_nest)
+
+```
+
+###Function to calculate some summary statistics for each storm
+```{r}
 ###Calculate some storm stats
-DR5_storms_stats <- DR5_storms %>%
-  group_by(Storm) %>%
-  summarise(MaxQ = max(Discharge_mmd),
+storm_stat_calculator <- function(df, num) {
+  
+  conc_col_name <- str_subset(names(df), "Suspended_sediment_concentration")
+  yield_col_name <- str_subset(names(df), "Suspended_sediment_load_kg")
+  
+  storm_stats <- df %>%
+    group_by(Storm) %>%
+    summarise(Yield = sum(get(yield_col_name))/num,
+            MaxQ = max(Discharge_mmd),
             MeanQ = mean(Discharge_mmd),
-            MaxSSC = max(Suspended_sediment_concentration_mgL_y__2.4x0.98),
-            MeanSSC = mean(Suspended_sediment_concentration_mgL_y__2.4x0.98),
-            dQ_Q = ((max(Discharge_mmd) - Discharge_mmd[1])/Discharge_mmd[1]),
-            Yield = sum(Suspended_sediment_load_kg_per_30_or_5_minutes),
-            x = (datetime[1] - datetime[2]))
+            MaxSSC = max(get(conc_col_name)),
+            MeanSSC = mean(get(conc_col_name)),
+            dQ_Q = ((max(Discharge_mmd) - Discharge_mmd[1])/Discharge_mmd[1])) %>%
+    na.omit(Yield)
+  
+  return(storm_stats)
+  
+}
+```
 
-View(DR5_storms_stats)
+###Calculate some summary statistics for each storm
+```{r}
+DR5_storms_stats <- storm_stat_calculator(DR5_storms_unnest, 1.63)
+DR4_storms_stats <- storm_stat_calculator(DR4_storms_unnest, 1.92)
+DR3_storms_stats <- storm_stat_calculator(DR3_storms_unnest, 5.09)
+DR2_storms_stats <- storm_stat_calculator(DR2_storms_unnest, 5.84)
+DRKR_storms_stats <- storm_stat_calculator(DRKR_storms_unnest, 14.2)
+```
 
+###Create c-Q plots
+####Create the folders the plots will go in
+```{r}
+###Make folders to put cQ plots
+station_names <- turb_file_names %>%
+  str_split( "_") %>%
+  unlist() %>%
+  str_subset("DR") %>%
+  unique()
+
+####Function to create folders
+folder_maker <- function(strng) {
+  
+  folder_name <- paste0(strng, "_CQ_plots")
+  
+  dir_create(paste0("C:/Users/jkemper/Documents/UrbanSediment/", folder_name))
+}
+
+####Create folders
+map(station_names, folder_maker)
+```
+
+###Now, a function to make the actual plots
+```{r}
 ###Make CQ plots
-plot_maker <- function(df) {
+
+####Function to make the plots
+plot_maker <- function(df, strng) {
+  
+  conc_col_name <- str_subset(names(df), "Suspended_sediment_concentration")
   
   df %>%
     mutate(ticker = row_number(datetime)) %>%
-    ggplot(aes(x = Discharge_cfs, y = Turbidity_FNU_raw, color = ticker)) +
+    ggplot(aes(x = Discharge_cfs, y = get(conc_col_name), color = ticker)) +
     geom_point(size = 5, shape = 1, stroke = 2) +
     geom_path() +
     theme_few() +
     scale_color_gradientn(colours = viridis::plasma(10))
   
   name <- date(df$datetime[1])
+  storm <- df$Group[1]
   
-  ggsave(paste0(name,".png"), path = "C:/Users/jkemper/Documents/UrbanSediment/DR5_CQ_plots")
+  
+  ggsave(paste0(name,"_", storm, ".png"), path = paste0("C:/Users/jkemper/Documents/UrbanSediment/", strng, "_CQ_plots"))
   
 }
+```
 
-zz <- DR5_storms_nest %>%
-  mutate(MaxQ = map(data, ~max(.x$Discharge_cfs))) %>%
-  slice(1:3)
-
-
-map(zz$data, ~plot_maker(.x))
-
-
+####Finally, make the actual plots
+```{r}
+###Make the plots
+map(DR5_storms_nest$data, ~plot_maker(df = .x, strng = "DR5"))
+map(DR4_storms_nest$data, ~plot_maker(df = .x, strng = "DR4"))
+map(DR3_storms_nest$data, ~plot_maker(df = .x, strng = "DR3"))
+map(DR2_storms_nest$data, ~plot_maker(df = .x, strng = "DR2"))
+map(DRKR_storms_nest$data, ~plot_maker(df = .x, strng = "DRKR"))
 
 
 ```
